@@ -338,7 +338,7 @@ export default function RobotVisualizer() {
                     </div>
                     <p className="font-display text-xl font-medium tracking-[-0.03em] text-[#315b4a]">{dataset.hoursLabel}</p>
                     <p className="mt-1 min-h-8 text-[11px] font-medium leading-snug text-black/65">{dataset.institution}</p>
-                    <div className="mt-3 flex min-h-[8rem] flex-col items-start gap-1.5">
+                    <div className="mt-3 flex min-h-[5.5rem] flex-col items-start gap-1.5">
                       <span
                         className="flex items-center gap-1.5 text-[9px] font-semibold text-black/70"
                       >
@@ -357,14 +357,6 @@ export default function RobotVisualizer() {
                           {CATEGORY[categoryKey].label}
                         </span>
                       ))}
-                      {dataset.collectionMethod && (
-                        <div className="mt-1 border-l border-black/15 pl-2 text-[8px] leading-snug text-black/50">
-                          <span className="block font-mono text-[7px] uppercase tracking-[0.12em] text-black/35">
-                            Collection
-                          </span>
-                          <span className="mt-0.5 block">{dataset.collectionMethod}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </article>
@@ -378,23 +370,19 @@ export default function RobotVisualizer() {
             <h2 className="flex min-h-11 items-center py-2 font-display text-sm font-semibold text-[#121310]">
               Sources
             </h2>
-            <div className="pb-5 pt-4 text-xs leading-relaxed text-black/65 sm:pt-5">
-              <ul className="grid gap-x-8 md:grid-cols-2 xl:grid-cols-3">
+            <div className="pb-5 pt-2 text-xs text-black/65">
+              <ul className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {datasets.map((dataset) => (
-                  <li key={dataset.name} className="min-w-0 border-t border-black/15 py-3">
-                    <div className="min-w-0">
-                      <a
-                        className="min-w-0 [overflow-wrap:anywhere] font-display text-sm font-semibold text-[#315b4a] underline decoration-[#315b4a]/35 underline-offset-2 hover:decoration-[#315b4a]"
-                        href={dataset.source.href}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {dataset.name}
-                      </a>
-                    </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-black/65">
-                      {dataset.source.note}
-                    </p>
+                  <li key={dataset.name} className="min-w-0 border-t border-black/15 py-2">
+                    <a
+                      className="inline-flex max-w-full items-center gap-1.5 [overflow-wrap:anywhere] font-display text-xs font-semibold text-[#315b4a] underline decoration-[#315b4a]/30 underline-offset-2 hover:decoration-[#315b4a]"
+                      href={dataset.source.href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {dataset.name}
+                      <span aria-hidden="true" className="flex-none font-mono text-[8px] text-[#315b4a]/45">↗</span>
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -406,7 +394,7 @@ export default function RobotVisualizer() {
               Notes
             </h2>
             <p className="w-full pb-5 pt-4 text-[11px] leading-relaxed text-black/65 sm:pt-5">
-              This is a curated, non-exhaustive selection. Figures are author-reported pretraining or training-mixture totals, not independently audited. “+” marks a lower bound, “~” an estimate, and N/D an undisclosed total. Each square represents 1,000 reported hours. Data labels describe the modality: robot trajectories are executed by a robot, while direct human manipulation is captured without one. Collection identifies the disclosed acquisition method, where available. “VLA + RL” denotes a VLA trained with reinforcement learning. Categories indicate included modalities, not proportions unless published.
+              Curated, non-exhaustive selection based on author-reported training totals. “+” marks a lower bound, “~” an estimate, and N/D an undisclosed total. Each square represents 1,000 reported hours. Categories indicate included modalities, not their proportions.
             </p>
           </div>
 
