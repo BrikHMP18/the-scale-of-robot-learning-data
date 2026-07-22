@@ -1,308 +1,420 @@
-import { useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
-
-type DataCategory = 'robot-auto' | 'robot-teleop' | 'human-actions' | 'human-no-actions';
+type DataCategory =
+  | 'robot-data'
+  | 'direct-human-manipulation'
+  | 'egocentric-video'
+  | 'simulation'
+  | 'web-data';
+type ModelCategory = 'vla' | 'vla-rl' | 'world-model' | 'embodied-fm';
 
 interface RobotDataset {
   name: string;
   year: string;
-  hours: number;
-  description: string;
-  hoursEstimated: boolean;
-  dataCategory: DataCategory;
-  dataTypeLabel: string;
-  objective: string;
-  trajectories: string;
-  diversity: string;
+  hours: number | null;
+  hoursLabel: string;
+  categories: DataCategory[];
+  collectionMethod?: string;
+  modelCategory: ModelCategory;
   institution: string;
-  mixNote?: string;
+  source: {
+    href: string;
+    note: string;
+  };
 }
 
-const DATA_CATEGORY_STYLE: Record<DataCategory, string> = {
-  'robot-auto':       'bg-slate-100 text-slate-600',
-  'robot-teleop':     'bg-amber-100 text-amber-800',
-  'human-actions':    'bg-violet-100 text-violet-700',
-  'human-no-actions': 'bg-indigo-100 text-indigo-700',
+const CATEGORY: Record<DataCategory, { label: string; color: string }> = {
+  'robot-data': { label: 'Robot trajectories', color: '#d8b74f' },
+  'direct-human-manipulation': { label: 'Direct human manipulation', color: '#c98275' },
+  'egocentric-video': { label: 'Egocentric human video', color: '#7ea6d8' },
+  'simulation': { label: 'Simulation data', color: '#82b596' },
+  'web-data': { label: 'Web / non-robot data', color: '#a28ab8' },
 };
 
-const SQUARE_COLOR = '#1e293b'; // single dark color for all grids
+const MODEL_CATEGORY: Record<ModelCategory, { label: string; color: string }> = {
+  'vla': { label: 'VLA', color: '#79b8ae' },
+  'vla-rl': { label: 'VLA + RL', color: '#d6a078' },
+  'world-model': { label: 'World model', color: '#a29acf' },
+  'embodied-fm': { label: 'Embodied FM', color: '#d39ab7' },
+};
+
+const GRID_COLOR = '#254d3b';
 
 const datasets: RobotDataset[] = [
   {
-    name: 'BridgeData V2',
-    year: '2023',
-    hours: 130,
-    description: '~130 Hours',
-    hoursEstimated: true,
-    dataCategory: 'robot-teleop',
-    dataTypeLabel: 'Robot (w/ actions)',
-    objective: 'Policy (IL/VLA)',
-    trajectories: '60k traj.',
-    diversity: '24 environments',
-    institution: 'UC Berkeley et al.',
-  },
-  {
-    name: 'DROID',
-    year: '2024',
-    hours: 350,
-    description: '350 Hours',
-    hoursEstimated: false,
-    dataCategory: 'robot-teleop',
-    dataTypeLabel: 'Robot (w/ actions)',
-    objective: 'Policy (IL/VLA)',
-    trajectories: '76k traj.',
-    diversity: '564 scenes',
-    institution: 'Stanford, CMU et al.',
-  },
-  {
-    name: 'RT-1',
-    year: '2022',
-    hours: 900,
-    description: '~900 Hours',
-    hoursEstimated: true,
-    dataCategory: 'robot-teleop',
-    dataTypeLabel: 'Robot (w/ actions)',
-    objective: 'Policy (IL/VLA)',
-    trajectories: '130k traj.',
-    diversity: '700+ tasks',
-    institution: 'Robotics at Google',
-  },
-  {
-    name: 'RoboCat',
-    year: '2023',
-    hours: 4000,
-    description: '~4,000 Hours',
-    hoursEstimated: true,
-    dataCategory: 'robot-auto',
-    dataTypeLabel: 'Mixed (RL + self-gen)',
-    objective: 'Self-improving policy',
-    trajectories: 'millions (self-gen)',
-    diversity: '253 task variations',
-    institution: 'Google DeepMind',
-    mixNote: 'Bulk of data is RL/self-generated; human teleop is only the seed (~100–1k demos/task)',
-  },
-  {
     name: 'π0',
-    year: '2024',
+    year: '31 Oct 2024',
     hours: 10000,
-    description: '~10,000 Hours',
-    hoursEstimated: true,
-    dataCategory: 'robot-teleop',
-    dataTypeLabel: 'Robot (w/ actions)',
-    objective: 'Policy + foundation',
-    trajectories: '903M steps',
-    diversity: 'OXE+DROID+Bridge',
+    hoursLabel: '10K+ h',
+    categories: ['robot-data'],
+    modelCategory: 'vla',
     institution: 'Physical Intelligence',
-    mixNote: 'Foundation model — mixes OXE, DROID, BridgeData',
+    source: {
+      href: 'https://arxiv.org/abs/2410.24164',
+      note: '10,000+ hours of dexterous robot data; additional open data are not quantified in hours.',
+    },
   },
   {
-    name: 'DreamDojo',
-    year: '2026',
-    hours: 44711,
-    description: '44,711 Hours',
-    hoursEstimated: false,
-    dataCategory: 'human-no-actions',
-    dataTypeLabel: 'Human (no actions)',
-    objective: 'World model',
-    trajectories: '1.18M traj.',
-    diversity: 'Egocentric video',
-    institution: 'NVIDIA',
+    name: 'π0.5',
+    year: '22 Apr 2025',
+    hours: null,
+    hoursLabel: 'N/D',
+    categories: ['robot-data', 'web-data'],
+    collectionMethod: 'Language teleoperation; mixed sources',
+    modelCategory: 'vla',
+    institution: 'Physical Intelligence',
+    source: {
+      href: 'https://arxiv.org/abs/2504.16054',
+      note: 'Total not disclosed. The paper reports about 400 hours of mobile-manipulator data plus an unquantified, extended version of the π0 dataset, other robot data, OXE, and web data.',
+    },
   },
   {
     name: 'GEN-0',
-    year: '2025',
+    year: '4 Nov 2025',
     hours: 270000,
-    description: '270,000 Hours',
-    hoursEstimated: false,
-    dataCategory: 'robot-teleop',
-    dataTypeLabel: 'Robot (w/ actions)',
-    objective: 'Policy + foundation',
-    trajectories: 'n/a',
-    diversity: 'Homes, warehouses, factories',
+    hoursLabel: '270K+ h',
+    categories: ['direct-human-manipulation'],
+    collectionMethod: 'Proprietary handheld interface (UMI-like)',
+    modelCategory: 'embodied-fm',
     institution: 'Generalist AI',
-    mixNote: 'Self-reported blog post (Nov 2025); no peer-reviewed paper. 10k+ new hours/week claimed.',
+    source: {
+      href: 'https://generalistai.com/blog/gen-0',
+      note: '270K+ hours of real-world manipulation trajectories. Generalist describes lightweight handheld devices that capture natural human manipulation without robot teleoperation.',
+    },
+  },
+  {
+    name: 'π*0.6',
+    year: '17 Nov 2025',
+    hours: null,
+    hoursLabel: 'N/D',
+    categories: ['robot-data', 'web-data'],
+    collectionMethod: 'Teleoperation · autonomous rollouts · expert interventions',
+    modelCategory: 'vla-rl',
+    institution: 'Physical Intelligence',
+    source: {
+      href: 'https://www.pi.website/blog/pistar06',
+      note: 'Exact total not disclosed. The paper describes tens of thousands of demonstration hours for offline-RL pretraining, followed by task demonstrations, autonomous robot episodes, and expert interventions through RECAP.',
+    },
+  },
+  {
+    name: 'DreamDojo',
+    year: '6 Feb 2026',
+    hours: 44711,
+    hoursLabel: '44,711 h',
+    categories: ['egocentric-video'],
+    modelCategory: 'world-model',
+    institution: 'NVIDIA',
+    source: {
+      href: 'https://arxiv.org/abs/2602.06949',
+      note: 'The final pretraining mixture totals 44,711 hours of egocentric human video. Continuous latent actions provide proxy labels where fine-grained action labels are absent.',
+    },
+  },
+  {
+    name: 'EgoScale',
+    year: '18 Feb 2026',
+    hours: 20854,
+    hoursLabel: '20,854 h',
+    categories: ['egocentric-video'],
+    modelCategory: 'vla',
+    institution: 'NVIDIA',
+    source: {
+      href: 'https://arxiv.org/abs/2602.16710',
+      note: '20,854 hours of action-labeled egocentric human video used to pretrain a VLA for dexterous human-to-robot transfer.',
+    },
+  },
+  {
+    name: 'GEN-1',
+    year: '2 Apr 2026',
+    hours: 500000,
+    hoursLabel: '500K+ h',
+    categories: ['direct-human-manipulation'],
+    collectionMethod: 'Proprietary handheld interface (UMI-like)',
+    modelCategory: 'embodied-fm',
+    institution: 'Generalist AI',
+    source: {
+      href: 'https://generalistai.com/blog/gen-1',
+      note: '500K+ hours of human physical-interaction data captured with low-cost human-operated devices and no robot data in pretraining; about one hour of robot data is used separately for each reported adaptation result.',
+    },
+  },
+  {
+    name: 'π0.7',
+    year: '16 Apr 2026',
+    hours: null,
+    hoursLabel: 'N/D',
+    categories: ['robot-data', 'egocentric-video', 'web-data'],
+    collectionMethod: 'Human demonstrations · autonomous rollouts · interventions',
+    modelCategory: 'vla',
+    institution: 'Physical Intelligence',
+    source: {
+      href: 'https://arxiv.org/abs/2604.15483',
+      note: 'Exact total not disclosed. Training mixes human demonstrations, autonomous policy-evaluation data including failures, human interventions, open robot datasets, egocentric human video, and web data. π0.7 is not RL-trained.',
+    },
+  },
+  {
+    name: 'LingBot-VLA 2.0',
+    year: '7 Jul 2026',
+    hours: 60000,
+    hoursLabel: '~60K h',
+    categories: ['robot-data', 'egocentric-video'],
+    modelCategory: 'vla',
+    institution: 'Robbyant',
+    source: {
+      href: 'https://arxiv.org/abs/2607.06403',
+      note: 'About 60K hours: 50K hours of filtered robot trajectories across 20 configurations and 10K hours of filtered egocentric human video.',
+    },
+  },
+  {
+    name: 'GR00T N1.7',
+    year: '7 Jul 2026',
+    hours: 40000,
+    hoursLabel: '~40K h',
+    categories: ['robot-data', 'egocentric-video', 'simulation'],
+    modelCategory: 'vla',
+    institution: 'NVIDIA',
+    source: {
+      href: 'https://developer.nvidia.com/blog/develop-humanoid-robot-policies-end-to-end-with-nvidia-isaac-gr00t/',
+      note: 'About 32K hours of real demonstrations and human egocentric data, plus 8K hours of simulated rollouts and demonstrations.',
+    },
+  },
+  {
+    name: 'Xiaomi-Robotics-1',
+    year: '16 Jul 2026',
+    hours: 100000,
+    hoursLabel: '100K+ h',
+    categories: ['direct-human-manipulation'],
+    collectionMethod: 'UMI',
+    modelCategory: 'vla',
+    institution: 'Xiaomi Robotics',
+    source: {
+      href: 'https://arxiv.org/abs/2607.15330',
+      note: '100K+ hours of real-world UMI trajectories across 1,700+ scenarios for pretraining; 7,200+ in-house robot hours are reported separately for post-training.',
+    },
+  },
+  {
+    name: 'ACT-2',
+    year: '17 Jul 2026',
+    hours: null,
+    hoursLabel: 'N/D',
+    categories: ['direct-human-manipulation'],
+    collectionMethod: 'Skill Capture Glove (UMI lineage)',
+    modelCategory: 'embodied-fm',
+    institution: 'Sunday Robotics',
+    source: {
+      href: 'https://www.sunday.ai/blog/act-2-preview',
+      note: 'ACT-2 is pretrained on a sensorized human dataset collected with proprietary hardware, but its hours and trajectory count are not disclosed. The single-demonstration result refers only to a post-training experiment.',
+    },
   },
 ];
 
-const SQUARE_SIZE = 3; // px
-const GAP = 1; // px
-const TOTAL_CELL_SIZE = SQUARE_SIZE + GAP;
-const PORTRAIT_RATIO = 4;
-const LABEL_MIN_WIDTH = 144; // px — matches w-36
-const HOURS_PER_SQUARE = 10;
+const HOURS_PER_SQUARE = 1000;
+const SQUARE_SIZE = 7;
+const GAP = 2;
+const CELL_SIZE = SQUARE_SIZE + GAP;
+const PORTRAIT_RATIO = 3;
 
-function getColumnWidth(hours: number): number {
+function getGridSize(hours: number) {
   const squares = Math.ceil(hours / HOURS_PER_SQUARE);
-  const cols = Math.max(1, Math.ceil(Math.sqrt(squares / PORTRAIT_RATIO)));
-  const canvasWidth = cols * TOTAL_CELL_SIZE;
-  return Math.max(canvasWidth, LABEL_MIN_WIDTH);
+  const columns = Math.max(1, Math.ceil(Math.sqrt(squares / PORTRAIT_RATIO)));
+  const rows = Math.ceil(squares / columns);
+
+  return {
+    squares,
+    columns,
+    rows,
+    width: columns * CELL_SIZE,
+    height: rows * CELL_SIZE,
+  };
 }
 
-const GridCanvas = ({ hours }: { hours: number }) => {
-  const color = SQUARE_COLOR;
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+function GridSvg({ hours, label }: { hours: number; label: string }) {
+  const grid = getGridSize(hours);
+  const partialCellOpacity = (hours % HOURS_PER_SQUARE) / HOURS_PER_SQUARE;
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  return (
+    <svg
+      className="relative z-[60] block"
+      width={grid.width}
+      height={grid.height}
+      viewBox={`0 0 ${grid.width} ${grid.height}`}
+      shapeRendering="crispEdges"
+      role="img"
+      aria-label={label}
+    >
+      {Array.from({ length: grid.squares }, (_, index) => {
+        const column = index % grid.columns;
+        const row = Math.floor(index / grid.columns);
+        const isPartialCell = index === grid.squares - 1 && partialCellOpacity !== 0;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const squares = Math.ceil(hours / HOURS_PER_SQUARE);
-    const cols = Math.max(1, Math.ceil(Math.sqrt(squares / PORTRAIT_RATIO)));
-    const rows = Math.ceil(squares / cols);
-
-    const width = cols * TOTAL_CELL_SIZE;
-    const height = rows * TOTAL_CELL_SIZE;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-
-    ctx.scale(dpr, dpr);
-    ctx.fillStyle = color;
-
-    for (let i = 0; i < squares; i++) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const x = col * TOTAL_CELL_SIZE;
-      const y = row * TOTAL_CELL_SIZE;
-
-      ctx.fillRect(x, y, SQUARE_SIZE, SQUARE_SIZE);
-    }
-  }, [hours]);
-
-  return <canvas ref={canvasRef} className="block" />;
-};
+        return (
+          <rect
+            key={index}
+            x={column * CELL_SIZE}
+            y={row * CELL_SIZE}
+            width={SQUARE_SIZE}
+            height={SQUARE_SIZE}
+            fill={GRID_COLOR}
+            fillOpacity={isPartialCell ? partialCellOpacity : 1}
+          />
+        );
+      })}
+    </svg>
+  );
+}
 
 export default function RobotVisualizer() {
   return (
-    <div className="min-h-screen bg-[#F5F5F0] text-slate-900 font-sans selection:bg-amber-200 flex flex-col">
-      <header className="px-6 md:px-12 pt-8 md:pt-12 pb-6 md:pb-10">
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-3 md:mb-4 font-display">
-          The Scale of Robot Learning Data
-        </h1>
-        <p className="text-base md:text-xl text-slate-600 max-w-2xl font-light">
-          Visualizing the growth of robot training datasets from early lab collections to web-scale human video.
-          Each square represents <span className="font-bold text-slate-900">10 Hours</span> of demonstration data.
-        </p>
-        <p className="text-xs md:text-sm text-slate-400 mt-3 md:mt-4 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-          Scroll horizontally to explore
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-        </p>
-      </header>
+    <main className="relative min-h-screen overflow-x-hidden border-t border-[#171714] bg-[#f2f0e9] text-[#121310] selection:bg-emerald-200">
+      <div className="mx-auto w-full max-w-[1920px]">
+        <section className="px-4 pb-7 pt-8 text-center sm:px-6 sm:pb-9 sm:pt-11 lg:px-8 lg:pb-10 lg:pt-14">
+          <h1 className="mx-auto max-w-[18rem] text-balance font-editorial text-[clamp(2.5rem,5.2vw,5.25rem)] font-normal leading-[0.9] tracking-[-0.035em] text-[#0d0e0c] sm:max-w-[46rem] sm:leading-[0.94] lg:max-w-none lg:whitespace-nowrap">
+            The Scale of Robot Learning Data
+          </h1>
 
-      <div className="overflow-x-auto pb-10 md:pb-16 w-full">
-        <div className="w-max mx-auto px-6 md:px-12">
+          <div className="mt-6 flex flex-col items-center gap-5 sm:mt-8 lg:mt-9">
+            <div className="grid grid-cols-[auto_1px_auto] items-center justify-center gap-4 sm:gap-8">
+              <div className="flex flex-col items-center gap-0.5 min-[380px]:flex-row min-[380px]:items-baseline min-[380px]:gap-2">
+                <strong className="font-display text-2xl font-medium tracking-[-0.04em] text-[#315b4a]">{datasets.length}</strong>
+                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-black/40">Releases</span>
+              </div>
+              <span className="h-5 w-px bg-[#315b4a]/20" />
+              <div className="flex flex-col items-center gap-0.5 min-[380px]:flex-row min-[380px]:items-baseline min-[380px]:gap-2">
+                <strong className="font-display text-2xl font-medium tracking-[-0.04em] text-[#315b4a]">1,000 h</strong>
+                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-black/40">Reported h / square</span>
+              </div>
+            </div>
 
-          {/* Canvas row — bottoms aligned */}
-          <div className="flex flex-row gap-2 items-end">
-            {datasets.map((dataset, index) => (
-              <motion.div
-                key={`canvas-${dataset.name}`}
-                style={{ width: getColumnWidth(dataset.hours), marginLeft: (index === 4 || index === 5 || index === 6) ? '2rem' : undefined }}
-                className="flex-shrink-0 flex justify-center"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
-                  <GridCanvas hours={dataset.hours} />
-                </div>
-              </motion.div>
-            ))}
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+                <span className="font-mono text-[8px] uppercase tracking-[0.14em] text-black/35">Model</span>
+                {Object.entries(MODEL_CATEGORY).map(([key, model]) => (
+                  <div key={key} className="flex items-center gap-1.5 text-[10px] text-black/65">
+                    <span
+                      className="h-[7px] w-[7px] flex-none rounded-full"
+                      style={{ backgroundColor: model.color }}
+                    />
+                    {model.label}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+                <span className="font-mono text-[8px] uppercase tracking-[0.14em] text-black/35">Data</span>
+                {Object.entries(CATEGORY).map(([key, category]) => (
+                  <div key={key} className="flex items-center gap-1.5 text-[10px] text-black/65">
+                    <span className="h-1.5 w-1.5 flex-none" style={{ backgroundColor: category.color }} />
+                    {category.label}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+        </section>
 
-          {/* Label row — tops aligned */}
-          <div className="flex flex-row gap-2 mt-4">
-            {datasets.map((dataset, index) => (
-              <motion.div
-                key={`label-${dataset.name}`}
-                style={{ width: getColumnWidth(dataset.hours), marginLeft: (index === 4 || index === 5 || index === 6) ? '2rem' : undefined }}
-                className="flex-shrink-0"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                  <div className="w-36 mx-auto text-center">
-                    <h2 className="text-xl font-bold mb-1">{dataset.name}</h2>
-                    <div className="text-sm font-semibold mb-2">{dataset.description}</div>
-                    <div className="flex items-center justify-center gap-1.5 mb-4">
-                      <span className="text-[10px] text-slate-400">{dataset.year}</span>
-                      {dataset.hoursEstimated ? (
-                        <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wide">
-                          Est.
-                        </span>
+        <section className="px-4 sm:px-6 lg:px-8">
+          <p className="mb-3 text-center font-mono text-[9px] uppercase tracking-[0.16em] text-[#315b4a]/50 xl:hidden">
+            Scroll to explore ↔
+          </p>
+          <div className="data-scrollbar overscroll-x-contain overflow-x-auto scroll-smooth pb-2 [scroll-snap-type:x_mandatory] xl:overflow-visible xl:pb-0 xl:[scroll-snap-type:none]">
+            <div className="flex min-w-max gap-3 pt-2 sm:pt-3 lg:pt-5 xl:min-w-0">
+              {datasets.map((dataset) => (
+                <article
+                  key={dataset.name}
+                  className="group w-[126px] flex-none scroll-ml-4 [scroll-snap-align:start] min-[390px]:w-[140px] sm:w-[148px] xl:min-w-0 xl:flex-1 xl:[scroll-snap-align:none]"
+                >
+                  <div className="flex h-[280px] items-end justify-center min-[390px]:h-[300px] sm:h-[360px]">
+                    <div className="origin-bottom scale-[0.72] transition-transform duration-300 ease-out group-hover:-translate-y-1 min-[390px]:scale-[0.8] sm:scale-100">
+                      {dataset.hours === null ? (
+                        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-black/35">n/d</span>
                       ) : (
-                        <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 uppercase tracking-wide">
-                          Reported
-                        </span>
+                        <GridSvg hours={dataset.hours} label={`${dataset.name}: ${dataset.hoursLabel}`} />
                       )}
                     </div>
+                  </div>
 
-                    <div className="border-t border-slate-200 pt-3 space-y-3 text-left">
-                      <div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-0.5">Data type</div>
-                        <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded ${DATA_CATEGORY_STYLE[dataset.dataCategory]}`}>
-                          {dataset.dataTypeLabel}
+                  <div className="border-t border-black/20 pb-7 pt-3.5 sm:pb-9 sm:pt-4">
+                    <div className="mb-3 flex min-h-[3.75rem] flex-col items-start gap-1">
+                      <h2 className="max-w-full [overflow-wrap:anywhere] font-display text-[15px] font-semibold leading-tight tracking-[-0.02em] transition-colors group-hover:text-[#315b4a] xl:text-[14px] 2xl:text-[15px]">
+                        {dataset.name}
+                      </h2>
+                      <span className="font-mono text-[9px] font-medium uppercase tracking-[0.04em] text-black/50">{dataset.year}</span>
+                    </div>
+                    <p className="font-display text-xl font-medium tracking-[-0.03em] text-[#315b4a]">{dataset.hoursLabel}</p>
+                    <p className="mt-1 min-h-8 text-[11px] font-medium leading-snug text-black/65">{dataset.institution}</p>
+                    <div className="mt-3 flex min-h-[8rem] flex-col items-start gap-1.5">
+                      <span
+                        className="flex items-center gap-1.5 text-[9px] font-semibold text-black/70"
+                      >
+                        <span
+                          className="h-[7px] w-[7px] flex-none rounded-full"
+                          style={{ backgroundColor: MODEL_CATEGORY[dataset.modelCategory].color }}
+                        />
+                        {MODEL_CATEGORY[dataset.modelCategory].label}
+                      </span>
+                      {dataset.categories.map((categoryKey) => (
+                        <span key={categoryKey} className="flex items-center gap-1.5 text-[9px] text-black/60">
+                          <span
+                            className="h-1.5 w-1.5 flex-none"
+                            style={{ backgroundColor: CATEGORY[categoryKey].color }}
+                          />
+                          {CATEGORY[categoryKey].label}
                         </span>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-0.5">Objective</div>
-                        <div className="text-xs text-slate-600">{dataset.objective}</div>
-                      </div>
-                      {dataset.trajectories !== 'n/a' && (
-                        <div>
-                          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-0.5">Scale</div>
-                          <div className="text-xs text-slate-600">{dataset.trajectories}</div>
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-0.5">Coverage</div>
-                        <div className="text-xs text-slate-600">{dataset.diversity}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-0.5">Institution</div>
-                        <div className="text-xs text-slate-600">{dataset.institution}</div>
-                      </div>
-                      {dataset.mixNote && (
-                        <div>
-                          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-0.5">Note</div>
-                          <div className="text-xs text-slate-500 italic">{dataset.mixNote}</div>
+                      ))}
+                      {dataset.collectionMethod && (
+                        <div className="mt-1 border-l border-black/15 pl-2 text-[8px] leading-snug text-black/50">
+                          <span className="block font-mono text-[7px] uppercase tracking-[0.12em] text-black/35">
+                            Collection
+                          </span>
+                          <span className="mt-0.5 block">{dataset.collectionMethod}</span>
                         </div>
                       )}
                     </div>
                   </div>
-                </motion.div>
-            ))}
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 pb-7 pt-3 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8 lg:pb-10">
+          <div>
+            <h2 className="flex min-h-11 items-center py-2 font-display text-sm font-semibold text-[#121310]">
+              Sources
+            </h2>
+            <div className="pb-5 pt-4 text-xs leading-relaxed text-black/65 sm:pt-5">
+              <ul className="grid gap-x-8 md:grid-cols-2 xl:grid-cols-3">
+                {datasets.map((dataset) => (
+                  <li key={dataset.name} className="min-w-0 border-t border-black/15 py-3">
+                    <div className="min-w-0">
+                      <a
+                        className="min-w-0 [overflow-wrap:anywhere] font-display text-sm font-semibold text-[#315b4a] underline decoration-[#315b4a]/35 underline-offset-2 hover:decoration-[#315b4a]"
+                        href={dataset.source.href}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dataset.name}
+                      </a>
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-black/65">
+                      {dataset.source.note}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
-        </div>
-      </div>
+          <div className="border-b border-black/15">
+            <h2 className="flex min-h-11 items-center border-t border-black/15 py-2 font-display text-sm font-semibold text-[#121310]">
+              Notes
+            </h2>
+            <p className="w-full pb-5 pt-4 text-[11px] leading-relaxed text-black/65 sm:pt-5">
+              This is a curated, non-exhaustive selection. Figures are author-reported pretraining or training-mixture totals, not independently audited. “+” marks a lower bound, “~” an estimate, and N/D an undisclosed total. Each square represents 1,000 reported hours. Data labels describe the modality: robot trajectories are executed by a robot, while direct human manipulation is captured without one. Collection identifies the disclosed acquisition method, where available. “VLA + RL” denotes a VLA trained with reinforcement learning. Categories indicate included modalities, not proportions unless published.
+            </p>
+          </div>
 
-      <footer className="px-6 md:px-12 mt-6 md:mt-8 pt-6 md:pt-8 pb-8 border-t border-slate-300 text-slate-500 text-xs space-y-2">
-        <p>
-          <span className="font-semibold text-slate-600">Hours sourcing:</span>{' '}
-          <span className="font-mono text-green-700 bg-green-50 border border-green-200 px-1 rounded">Reported</span> — figure taken directly from the paper or dataset release.{' '}
-          <span className="font-mono bg-slate-100 text-slate-500 px-1 rounded">Est.</span> — estimated from trajectory count × average episode duration (typically 10–30 s); treat as order-of-magnitude.
-          π0 mixes OXE, DROID, and BridgeData V2; hours converted from 903M timesteps ("around 10,000 hours" per paper). GEN-0 hours are self-reported by Generalist AI; no peer-reviewed paper.
-        </p>
-        <p>
-          <span className="font-semibold text-slate-600">Data type note:</span>{' '}
-          <span className="font-mono text-slate-500">Mixed (RL + self-gen)</span> — RL agent data + self-generated rollouts; human teleop is seed only (RoboCat).{' '}
-          <span className="font-mono text-slate-500">Robot (w/ actions)</span> — human teleop with proprioceptive action labels.{' '}
-          <span className="font-mono text-slate-500">Human (no actions)</span> — raw video only; latent actions inferred post-hoc. Not directly comparable: 10k h robot ≠ 10k h human video in information density.
-        </p>
-        <p className="text-slate-400">
-          Sources: BridgeData V2 (Walke et al., CoRL 2023) · DROID (Khazatsky et al., RSS 2024) · RT-1 (Brohan et al., arXiv 2022) · RoboCat (Bousmalis et al., TMLR 2023) · π0 (Black et al., arXiv 2024) · DreamDojo (Gao et al., NVIDIA, arXiv 2026) · GEN-0 (Generalist AI, Nov 2025, generalistai.com)
-        </p>
-      </footer>
-    </div>
+          <footer className="flex justify-center pt-6 font-mono text-[9px] uppercase tracking-[0.16em] sm:justify-end">
+            <span className="text-[#315b4a]/70">Fact-checked 22 Jul 2026</span>
+          </footer>
+        </section>
+      </div>
+    </main>
   );
 }

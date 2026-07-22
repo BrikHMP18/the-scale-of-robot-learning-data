@@ -1,5 +1,5 @@
 {
-  "name": "GPT Token Scale",
-  "description": "Visualizing the scale of training data from GPT-1 to GPT-5 using token counts.",
+  "name": "The Scale of Robot Learning Data",
+  "description": "Visualizing author-reported training-data scale and modalities across robot-learning releases.",
   "requestFramePermissions": []
 }
